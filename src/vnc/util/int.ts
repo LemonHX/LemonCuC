@@ -1,0 +1,16 @@
+// @ts-nocheck
+/*
+ * noVNC: HTML5 VNC client
+ * Copyright (C) 2020 The noVNC Authors
+ * Licensed under MPL 2.0 (see LICENSE.txt)
+ *
+ * See README.md for usage and integration instructions.
+ */
+
+export function toUnsigned32bit(toConvert: number): number {
+    return toConvert >>> 0;
+}
+
+export function toSigned32bit(toConvert: number): number {
+    return toConvert | 0;
+}
