@@ -37,7 +37,6 @@ run:
 	$(DOCKER) run --rm -d \
 		--name $(IMAGE_NAME) \
 		-p 6080:6080 \
-		-p 5702:5702 \
 		$(IMAGE_NAME):latest
 
 # ── Stop container ───────────────────────────────────────────────────────────

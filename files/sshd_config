@@ -1,0 +1,11 @@
+# LemonCUC sshd – only listens on localhost (accessed via WS proxy)
+Port 22
+ListenAddress 127.0.0.1
+PermitRootLogin yes
+PubkeyAuthentication yes
+PasswordAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM no
+X11Forwarding no
+PrintMotd no
+AcceptEnv LANG LC_* TERM

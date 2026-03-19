@@ -12,12 +12,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11-xserver-utils \
     x11-utils \
     xauth \
-    # Desktop environment
-    xfce4 \
-    xfce4-goodies \
-    xfce4-terminal \
+    # Window manager (i3)
+    i3-wm \
+    i3status \
+    suckless-tools \
+    # Notification daemon
+    dunst \
+    # File manager
+    thunar \
     # VNC
     x11vnc \
+    # SSH server
+    openssh-server \
+    # PolicyKit
+    polkitd \
+    # GTK / GLib / GDK runtime
+    libgtk-3-0 \
+    libgtk-4-1 \
+    libglib2.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    adwaita-icon-theme \
+    # Cursor
+    xcursor-themes \
+    # Terminal emulator (for i3-sensible-terminal)
+    xterm \
+    # X fonts for xterm
+    xfonts-base \
     # Input / screenshot
     xdotool \
     scrot \
@@ -45,6 +65,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-pulseaudio \
     # Utilities
+    jq \
+    iproute2 \
     net-tools \
     netcat-openbsd \
     curl \
@@ -54,14 +76,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tree \
     ffmpeg
 
-# ── Locale ────────────────────────────────────────────────────────────────────
 # ── machine-id (needed by D-Bus / Chrome) ────────────────────────────────────
 RUN dbus-uuidgen > /etc/machine-id && cp /etc/machine-id /var/lib/dbus/machine-id
 
+# ── Locale ────────────────────────────────────────────────────────────────────
 RUN sed -i 's/# en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen && locale-gen
 
 # ── Font configuration ───────────────────────────────────────────────────────
-# Set Noto Sans as default sans-serif, with CJK fallback and subpixel hinting
 COPY files/99-lemoncuc-fonts.conf /etc/fonts/conf.d/99-lemoncuc-fonts.conf
 RUN fc-cache -fv
 
@@ -73,30 +94,42 @@ RUN curl -fsSL "https://dl.google.com/linux/direct/google-chrome-stable_current_
     && apt-get install -y --no-install-recommends /tmp/chrome.deb \
     && rm /tmp/chrome.deb
 
+# Replace Chrome wrappers with container-safe versions
+RUN mv /usr/bin/google-chrome-stable /usr/bin/google-chrome-stable-old \
+    && mv /usr/bin/google-chrome       /usr/bin/google-chrome-old
+COPY files/google-chrome-stable /usr/bin/google-chrome-stable
+COPY files/google-chrome        /usr/bin/google-chrome
+RUN chmod +x /usr/bin/google-chrome-stable /usr/bin/google-chrome
+
+# ── SSH: generate host keys + root login key (passwordless local SSH) ────────
+RUN mkdir -p /run/sshd \
+    && ssh-keygen -A \
+    && ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N "" \
+    && cat /root/.ssh/id_ed25519.pub >> /root/.ssh/authorized_keys \
+    && chmod 600 /root/.ssh/authorized_keys
+COPY files/sshd_config /etc/ssh/sshd_config
+
 # ── LemonCUC backend (pre-built musl static binary) ──────────────────────────
 COPY target/x86_64-unknown-linux-musl/release/lemon-cuc-backend /usr/local/bin/lemon-cuc-backend
 RUN chmod +x /usr/local/bin/lemon-cuc-backend
 
 # ── Docker CLI (static binary) ───────────────────────────────────────────────
-# Pre-installed so DockerAccess works without any runtime download.
 ARG DOCKER_VERSION=29.3.0
 RUN curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
     | tar -xz --strip-components=1 -C /usr/local/bin docker/docker \
     && chmod +x /usr/local/bin/docker
 
-# ── Desktop config files ──────────────────────────────────────────────────────
-RUN mkdir -p /root/Desktop
-COPY files/google-chrome.desktop /usr/share/applications/google-chrome.desktop
-COPY files/google-chrome.desktop /root/Desktop/google-chrome.desktop
-RUN chmod +x /root/Desktop/google-chrome.desktop
-
-# Autostart entry to disable screensaver / blanking once X is up
-COPY files/screensaver.desktop /etc/xdg/autostart/disable-screensaver.desktop
+# ── i3 + dunst + properties configuration ────────────────────────────────────
+RUN mkdir -p /root/.config/i3 /root/.config/i3status /root/.config/dunst
+COPY files/i3-config     /root/.config/i3/config
+COPY files/i3status.conf /root/.config/i3status/config
+COPY files/dunstrc       /root/.config/dunst/dunstrc
+COPY files/properties.json /etc/lemoncuc/properties.json
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 6080 5702
+EXPOSE 6080
 
 CMD ["/entrypoint.sh"]

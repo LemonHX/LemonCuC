@@ -1,0 +1,144 @@
+# ── LemonCUC i3 configuration ────────────────────────────────────────────────
+# Mod key = Alt (Mod4/Super is intercepted by browser/OS over VNC)
+set $mod Mod1
+
+# Font for window titles and i3bar
+font pango:Noto Sans CJK SC 10
+
+# ────────────────────────────────────────────────────────
+# Use mouse+$mod to drag floating windows
+floating_modifier $mod
+
+# Kill focused window
+bindsym $mod+Shift+q kill
+
+# Change focus
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# Move focused window
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+# Split orientation
+bindsym $mod+b split h
+bindsym $mod+v split v
+
+# Fullscreen
+bindsym $mod+f fullscreen toggle
+
+# Layout (stacking, tabbed, toggle split)
+bindsym $mod+s layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+
+# Toggle floating
+bindsym $mod+Shift+space floating toggle
+bindsym $mod+space focus mode_toggle
+
+# Focus parent/child
+bindsym $mod+a focus parent
+
+# ── Workspaces ───────────────────────────────────────────────────────────────
+set $ws1 "1"
+set $ws2 "2"
+set $ws3 "3"
+set $ws4 "4"
+set $ws5 "5"
+set $ws6 "6"
+set $ws7 "7"
+set $ws8 "8"
+set $ws9 "9"
+
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+bindsym $mod+4 workspace $ws4
+bindsym $mod+5 workspace $ws5
+bindsym $mod+6 workspace $ws6
+bindsym $mod+7 workspace $ws7
+bindsym $mod+8 workspace $ws8
+bindsym $mod+9 workspace $ws9
+
+bindsym $mod+Shift+1 move container to workspace $ws1
+bindsym $mod+Shift+2 move container to workspace $ws2
+bindsym $mod+Shift+3 move container to workspace $ws3
+bindsym $mod+Shift+4 move container to workspace $ws4
+bindsym $mod+Shift+5 move container to workspace $ws5
+bindsym $mod+Shift+6 move container to workspace $ws6
+bindsym $mod+Shift+7 move container to workspace $ws7
+bindsym $mod+Shift+8 move container to workspace $ws8
+bindsym $mod+Shift+9 move container to workspace $ws9
+
+# ── Resize mode ──────────────────────────────────────────────────────────────
+mode "resize" {
+    bindsym h resize shrink width 5 px or 5 ppt
+    bindsym j resize grow height 5 px or 5 ppt
+    bindsym k resize shrink height 5 px or 5 ppt
+    bindsym l resize grow width 5 px or 5 ppt
+    bindsym Left resize shrink width 5 px or 5 ppt
+    bindsym Down resize grow height 5 px or 5 ppt
+    bindsym Up resize shrink height 5 px or 5 ppt
+    bindsym Right resize grow width 5 px or 5 ppt
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+    bindsym $mod+r mode "default"
+}
+bindsym $mod+r mode "resize"
+
+# ── Terminal ─────────────────────────────────────────────────────────────────
+bindsym $mod+Return exec xterm
+
+# ── Launcher ─────────────────────────────────────────────────────────────────
+bindsym $mod+d exec --no-startup-id dmenu_run -fn 'Noto Sans CJK SC-12' -nb '#1a1a2e' -nf '#a8a8b3' -sb '#e94560' -sf '#ffffff'
+
+# ── Chrome ───────────────────────────────────────────────────────────────────
+bindsym $mod+c exec --no-startup-id google-chrome-stable
+
+# ── Reload / restart ─────────────────────────────────────────────────────────
+bindsym $mod+Shift+c reload
+bindsym $mod+Shift+r restart
+
+# ── Appearance ───────────────────────────────────────────────────────────────
+# class                 border  backgr. text    indicator child_border
+client.focused          #e94560 #16213e #eee    #e94560   #e94560
+client.focused_inactive #333333 #1a1a2e #a8a8b3 #333333   #333333
+client.unfocused        #222222 #0a0a1a #555555 #222222   #222222
+client.urgent           #ff0000 #900000 #ffffff #ff0000   #ff0000
+
+# No title bars, thin borders
+default_border pixel 2
+default_floating_border pixel 2
+hide_edge_borders smart
+
+# ── i3bar ────────────────────────────────────────────────────────────────────
+bar {
+    status_command i3status
+    position bottom
+    font pango:Noto Sans CJK SC 10
+    colors {
+        background #0a0a1a
+        statusline #a8a8b3
+        separator  #333333
+        focused_workspace  #e94560 #e94560 #ffffff
+        active_workspace   #333333 #16213e #a8a8b3
+        inactive_workspace #1a1a2e #1a1a2e #555555
+        urgent_workspace   #ff0000 #900000 #ffffff
+    }
+}
+
+
+# ── Disable screensaver / DPMS ───────────────────────────────────────────────
+exec_always --no-startup-id xset s off -dpms s noblank

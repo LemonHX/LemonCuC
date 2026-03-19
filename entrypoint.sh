@@ -1,10 +1,23 @@
 #!/bin/bash
 set -e
 
-# ── Configurable parameters (override via docker run -e) ─────────────────────
-SCREEN_WIDTH="${SCREEN_WIDTH:-1280}"
-SCREEN_HEIGHT="${SCREEN_HEIGHT:-800}"
-SCREEN_DEPTH="${SCREEN_DEPTH:-24}"
+PROPS="/etc/lemoncuc/properties.json"
+
+# ── Read display config from properties.json ─────────────────────────────────
+if [ -f "$PROPS" ]; then
+    SCREEN_WIDTH="$(jq -r '.display.width // 1280' "$PROPS")"
+    SCREEN_HEIGHT="$(jq -r '.display.height // 800' "$PROPS")"
+    SCREEN_DEPTH="$(jq -r '.display.depth // 24' "$PROPS")"
+    CURSOR_THEME="$(jq -r '.cursor.theme // "Adwaita"' "$PROPS")"
+    CURSOR_SIZE="$(jq -r '.cursor.size // 48' "$PROPS")"
+else
+    SCREEN_WIDTH="${SCREEN_WIDTH:-1280}"
+    SCREEN_HEIGHT="${SCREEN_HEIGHT:-800}"
+    SCREEN_DEPTH="${SCREEN_DEPTH:-24}"
+    CURSOR_THEME="Adwaita"
+    CURSOR_SIZE=48
+fi
+
 VNC_PORT="${VNC_PORT:-5900}"
 VNC_PASSWORD="${VNC_PASSWORD:-}"
 
@@ -19,11 +32,15 @@ trap cleanup EXIT SIGTERM SIGINT
 # ── Virtual display ───────────────────────────────────────────────────────────
 Xvfb :0 -screen 0 "${SCREEN_WIDTH}x${SCREEN_HEIGHT}x${SCREEN_DEPTH}" \
     -ac +extension GLX +render -noreset &
-XVFB_PID=$!
 sleep 1
 
-# Disable X-level screen-saver / blanking (skip -dpms, Xvfb has no DPMS)
-xset s off s noblank 2>/dev/null || true
+# ── Disable screensaver / DPMS / blanking ─────────────────────────────────────
+xset s off -dpms s noblank 2>/dev/null || true
+
+# ── Cursor theme (big cursor) ─────────────────────────────────────────────────
+export XCURSOR_THEME="$CURSOR_THEME"
+export XCURSOR_SIZE="$CURSOR_SIZE"
+xsetroot -cursor_name left_ptr 2>/dev/null || true
 
 # ── D-Bus system + session bus (no systemd) ──────────────────────────────────
 mkdir -p /run/dbus
@@ -31,22 +48,22 @@ dbus-daemon --system --fork 2>/dev/null || true
 eval "$(dbus-launch --sh-syntax)"
 export DBUS_SESSION_BUS_ADDRESS
 
-# ── PulseAudio (virtual sound server) ─────────────────────────────────
+# ── PulseAudio (virtual sound server) ─────────────────────────────────────────
 pulseaudio --start --exit-idle-time=-1
-# Load a virtual null sink so apps have somewhere to output audio.
-# The .monitor source lets tcpulse capture everything being played.
-pactl load-module module-null-sink sink_name=virtual_speaker sink_properties=device.description="VirtualSpeaker" 2>/dev/null || true
+pactl load-module module-null-sink sink_name=virtual_speaker \
+    sink_properties=device.description="VirtualSpeaker" 2>/dev/null || true
 pactl set-default-sink virtual_speaker 2>/dev/null || true
 
-# ── XFCE4 desktop ─────────────────────────────────────────────────────────────
-startxfce4 &
-sleep 2
+# ── sshd ──────────────────────────────────────────────────────────────────────
+mkdir -p /run/sshd
+/usr/sbin/sshd
 
-# Disable XFCE4 screensaver and power manager via xfconf-query
-xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/dpms-enabled          -s false 2>/dev/null || true
-xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-ac           -s 0     2>/dev/null || true
-xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/dpms-on-ac-sleep      -s 0     2>/dev/null || true
-xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/dpms-on-ac-off        -s 0     2>/dev/null || true
+# ── dunst (notification daemon) ───────────────────────────────────────────────
+dunst &
+
+# ── i3 window manager ────────────────────────────────────────────────────────
+i3 &
+sleep 1
 
 # ── VNC server ────────────────────────────────────────────────────────────────
 if [ -n "${VNC_PASSWORD}" ]; then
@@ -58,7 +75,6 @@ else
 fi
 sleep 1
 
-# ── LemonCUC backend (websockify + tcpulse) ──────────────────────────────────
-# Run as PID 1's direct child — if it exits, the container exits.
+# ── LemonCUC backend (axum server on :6080) ──────────────────────────────────
 echo "entrypoint: starting lemon-cuc-backend"
 exec lemon-cuc-backend

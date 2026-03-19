@@ -1,0 +1,34 @@
+{
+  "apps": [
+    {
+      "name": "Google Chrome",
+      "exec": "/usr/bin/google-chrome-stable",
+      "args": [
+        "--no-sandbox",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-gpu",
+        "--disable-software-rasterizer",
+        "--disable-dev-shm-usage",
+        "--disable-sync",
+        "--disable-background-networking"
+      ],
+      "autostart": false
+    },
+    {
+      "name": "Thunar",
+      "exec": "/usr/bin/thunar",
+      "args": [],
+      "autostart": false
+    }
+  ],
+  "cursor": {
+    "theme": "Adwaita",
+    "size": 48
+  },
+  "display": {
+    "width": 1280,
+    "height": 800,
+    "depth": 24
+  }
+}

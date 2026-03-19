@@ -1,51 +1,61 @@
-//! LemonCUC backend – websockify + tcpulse in one binary.
+//! LemonCUC backend – single-port axum server with WS + REST API.
 
+mod api;
+mod handlers;
 mod tcpulse;
-mod websockify;
+
+use axum::Json;
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum_openapi3::utoipa::openapi::{InfoBuilder, OpenApiBuilder};
+use axum_openapi3::{AddRoute, build_openapi, endpoint};
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt().init();
-
     tracing::info!("LemonCUC backend starting");
 
-    // websockify #1: WS :6080 → VNC TCP :5900
-    let ws_vnc = tokio::spawn({
-        let ws_listen = "0.0.0.0:6080";
-        let vnc_target = "127.0.0.1:5900";
-        async move {
-            if let Err(e) = websockify::run(ws_listen, vnc_target).await {
-                tracing::error!("websockify(vnc) error: {e}");
-            }
-        }
-    });
+    let app = axum::Router::new()
+        // ── WebSocket endpoints (not in OpenAPI) ──
+        .route("/ws/vnc", get(handlers::vnc::ws_vnc))
+        .route("/ws/audio", get(handlers::audio::ws_audio))
+        .route("/ws/ssh", get(handlers::ssh::ws_ssh))
+        .route("/ws/notify", get(handlers::notify::ws_notify))
+        .route("/ws/cdp", get(handlers::cdp::ws_cdp))
+        // ── REST API (with OpenAPI docs) ──
+        .add(api::xdotool::api_xdotool())
+        .add(api::dmenu::api_dmenu())
+        .add(api::i3msg::api_i3msg())
+        .add(api::properties::api_get_properties())
+        .add(api::scrot::api_scrot())
+        // ── OpenAPI JSON endpoint ──
+        .add(serve_openapi())
+        // ── CORS ──
+        .layer(CorsLayer::permissive());
 
-    // tcpulse: raw TCP audio server on internal port :5701
-    let audio_tcp = tokio::spawn({
-        let audio_listen = "127.0.0.1:5701";
-        async move {
-            if let Err(e) = tcpulse::run(audio_listen).await {
-                tracing::error!("tcpulse error: {e}");
-            }
-        }
-    });
-
-    // websockify #2: WS :5702 → tcpulse TCP :5701
-    let ws_audio = tokio::spawn({
-        let ws_listen = "0.0.0.0:5702";
-        let audio_target = "127.0.0.1:5701";
-        async move {
-            if let Err(e) = websockify::run(ws_listen, audio_target).await {
-                tracing::error!("websockify(audio) error: {e}");
-            }
-        }
-    });
-
-    tokio::select! {
-        r = ws_vnc => { r?; }
-        r = audio_tcp => { r?; }
-        r = ws_audio => { r?; }
-    }
+    // Bind and serve
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:6080").await?;
+    tracing::info!("listening on 0.0.0.0:6080");
+    axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+/// Serve the generated OpenAPI JSON document.
+#[endpoint(
+    method = "GET",
+    path = "/api/openapi.json",
+    description = "OpenAPI specification"
+)]
+async fn serve_openapi() -> impl IntoResponse {
+    let openapi = build_openapi(|| {
+        OpenApiBuilder::new().info(
+            InfoBuilder::new()
+                .title("LemonCUC API")
+                .version(env!("CARGO_PKG_VERSION"))
+                .description(Some("AI-friendly desktop control API")),
+        )
+    });
+    Json(openapi)
 }

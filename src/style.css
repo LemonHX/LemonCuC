@@ -1,0 +1,371 @@
+@import '@xterm/xterm/css/xterm.css';
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    overflow: hidden;
+}
+
+/* ── Connect overlay ── */
+.overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .6);
+    backdrop-filter: blur(6px);
+    z-index: 100;
+    transition: opacity .25s;
+}
+
+.overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dialog {
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 12px;
+    padding: 2rem;
+    width: min(400px, 90vw);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+}
+
+.dialog h2 {
+    margin-bottom: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.field {
+    margin-bottom: 1rem;
+}
+
+.field label {
+    display: block;
+    font-size: .85rem;
+    margin-bottom: .35rem;
+    color: #a8a8b3;
+}
+
+.field input {
+    width: 100%;
+    padding: .6rem .8rem;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    background: #1a1a2e;
+    color: #eee;
+    font-size: .95rem;
+    outline: none;
+    transition: border-color .2s;
+}
+
+.field input:focus {
+    border-color: #e94560;
+}
+
+.field input::placeholder {
+    color: #555;
+}
+
+.error-msg {
+    color: #e94560;
+    font-size: .85rem;
+    min-height: 1.2em;
+    margin-bottom: .5rem;
+}
+
+.btn {
+    width: 100%;
+    padding: .7rem;
+    border: none;
+    border-radius: 6px;
+    background: #e94560;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+}
+
+.btn:hover {
+    background: #c73650;
+}
+
+.btn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+/* ── Main split layout ── */
+.main {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.main.hidden {
+    display: none;
+}
+
+/* Left panel: VNC */
+#left-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 60%;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+#vnc-toolbar {
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+}
+
+#vnc-toolbar button {
+    padding: 4px 10px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background: #1a1a2e;
+    color: #eee;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+#vnc-toolbar button:hover {
+    background: #0f3460;
+}
+
+#screen {
+    flex: 1;
+    overflow: hidden;
+    background: #000;
+}
+
+/* Resize handle */
+#resize-handle {
+    width: 5px;
+    cursor: col-resize;
+    background: #0f3460;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+
+#resize-handle:hover,
+#resize-handle.active {
+    background: #e94560;
+}
+
+/* Right panel: Terminal tabs */
+#right-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 40%;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+/* Tab bar */
+#term-tab-bar {
+    display: flex;
+    align-items: center;
+    background: #16213e;
+    border-bottom: 1px solid #0f3460;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+#term-tabs {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+#term-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.term-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-right: 1px solid #0f3460;
+    background: #1a1a2e;
+    color: #999;
+    font-size: .8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+
+.term-tab:hover {
+    background: #16213e;
+    color: #eee;
+}
+
+.term-tab.active {
+    background: #0f3460;
+    color: #fff;
+}
+
+.term-tab .close-tab {
+    font-size: .7rem;
+    opacity: .5;
+    cursor: pointer;
+}
+
+.term-tab .close-tab:hover {
+    opacity: 1;
+    color: #e94560;
+}
+
+#btn-new-tab {
+    padding: 6px 12px;
+    border: none;
+    background: transparent;
+    color: #e94560;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+#btn-new-tab:hover {
+    background: #16213e;
+}
+
+/* Terminal container */
+#term-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+}
+
+#term-container .xterm {
+    width: 100%;
+    height: 100%;
+}
+
+/* ── Keybindings modal ── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    transition: opacity .2s;
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    position: relative;
+    width: min(720px, 90vw);
+    height: min(80vh, 600px);
+    background: #1a1a2e;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
+}
+
+.modal-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: #e94560;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.modal-close:hover {
+    color: #fff;
+}
+
+#keybindings-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ── Paste modal ── */
+.paste-modal-content {
+    width: min(520px, 90vw);
+    height: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.paste-modal-content h3 {
+    color: #e94560;
+    font-size: 1rem;
+    margin: 0;
+}
+
+#paste-textarea {
+    width: 100%;
+    min-height: 180px;
+    max-height: 50vh;
+    resize: vertical;
+    background: #0a0a1a;
+    color: #eee;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .9rem;
+    outline: none;
+    line-height: 1.5;
+}
+
+#paste-textarea:focus {
+    border-color: #e94560;
+}
+
+.paste-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.paste-actions .btn {
+    flex: 1;
+}
+
+.btn-secondary {
+    background: #333;
+}
+
+.btn-secondary:hover {
+    background: #444;
+}

@@ -1,12 +1,29 @@
 [package]
 name = "lemon-cuc-backend"
 edition = "2024"
-version = "0.1.0"
+version = "0.2.0"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-tokio-tungstenite = "0.26"
 futures-util = "0.3"
 
+# Web framework
+axum = { version = "0.8", features = ["ws"] }
+axum-extra = { version = "0.10", features = ["typed-header"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+# OpenAPI doc generation
+axum-openapi3 = "0.2.3"
+
+# Serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+base64 = "0.22"
+
+# WebSocket client (for CDP proxy)
+tokio-tungstenite = "0.26"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+
+# Logging
 tracing = "0.1"
-tracing-subscriber = { version = "0.3" }
+tracing-subscriber = "0.3"
