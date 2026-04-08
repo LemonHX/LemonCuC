@@ -1,5 +1,8 @@
 FROM debian:13
 
+# replace shell with bash so we can source files
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
 ENV DEBIAN_FRONTEND=noninteractive \
     DEBIAN_PRIORITY=high \
     DISPLAY=:0 \
@@ -100,6 +103,22 @@ RUN mv /usr/bin/google-chrome-stable /usr/bin/google-chrome-stable-old \
 COPY files/google-chrome-stable /usr/bin/google-chrome-stable
 COPY files/google-chrome        /usr/bin/google-chrome
 RUN chmod +x /usr/bin/google-chrome-stable /usr/bin/google-chrome
+
+# Install UV
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin/:$PATH"
+
+# Install NVM and Node.js and global npm packages (skills + agent-browser CLIs, plus their dependencies)
+ENV NVM_DIR=/root/.nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | PROFILE="${BASH_ENV}" bash
+RUN source $NVM_DIR/nvm.sh && \
+    nvm install --lts && \
+    nvm alias default lts/* && \
+    nvm use default && \
+    npm install -g skills agent-browser && \
+    npx skills add vercel-labs/skills -a cline -s find-skills -g -y && \
+    npx skills add vercel-labs/agent-browser -a cline -s agent-browser -g -y
 
 # ── SSH: generate host keys + root login key (passwordless local SSH) ────────
 RUN mkdir -p /run/sshd \
